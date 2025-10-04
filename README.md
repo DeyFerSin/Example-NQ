@@ -21,6 +21,8 @@ Este repositorio contiene **dos ejemplos en Visual Basic .NET** para comunicarse
 
 El NQ‑EP4L actúa como **gateway Ethernet ⇄ IO‑Link** y expone el *process data* de cada puerto en registros (según su mapeo).
 
+<img width="1470" height="661" alt="image" src="https://github.com/user-attachments/assets/f831e9f2-fb6e-4c22-ad0b-e0a7ea08ddae" />
+
 ---
 
 ## 📦 Dependencias
@@ -133,7 +135,29 @@ Private Const CHANGE_THRESHOLD_FLOAT As Single = 0.01F
 - La **dirección** donde veas variación coherente con la medición es la que usarás después en el **Reader simple**.
 
 ---
+## ✅ Prueba de integración y validación de lectura
 
+![Example NQ](https://github.com/user-attachments/assets/cd41c398-57cf-42a2-a449-4cd4e7f838e1)
+
+**Resultados observados**  
+En la consola (ver captura) se imprimieron líneas como:
+
+- `Holding @2: INT16 867->868 (~86.7->86.8 mm)`  
+- `Input  @2: INT16 867 (~86.7 mm)`
+
+En paralelo, el **display del LR-X** mostró **86.7 mm**.
+
+**Interpretación**
+- El registro **Holding @2** contiene el *Current Value* del port 1 con **escala 0.1 mm**.  
+  - Relación usada: `mm = raw / 10` → `867 / 10 = 86.7 mm`.  
+- El valor también aparece en **Input @2** en este master (sombra/copia del PV). Dependiendo de la configuración del NQ-EP4L, el PV puede exponerse en Holding, Input o ambos; por ello el **scanner** es útil para **descubrir** el mapeo real en campo.
+- Otros registros constantes (p. ej., `4 (~0.4 mm)`) no corresponden a la variable de proceso y pueden ser marcadores/estado internos.
+
+**Conclusión**
+- Existe **correlación 1:1** entre el valor del display del LR-X y la lectura Modbus/TCP del **Holding @2**.  
+- El **reader simple** del proyecto puede fijarse en esa dirección para obtener el *Current Value* en mm de forma fiable.
+
+---
 ## 🔐 Notas y consejos
 
 - Verifica que el NQ‑EP4L tenga **Modbus/TCP habilitado** y el firewall permita el puerto **502**.

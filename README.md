@@ -1,7 +1,11 @@
 # 🔧 Example NQ-EP4L Modbus/TCP Reader + Scanner (VB.NET)
 
-![VB.NET](https://img.shields.io/badge/VB.NET-512BD4?style=for-the-badge&logo=visualbasic&logoColor=white)
-![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-blue?style=for-the-badge&logo=open-source-initiative&logoColor=white)
+[![VB.NET](https://img.shields.io/badge/VB.NET-512BD4?style=flat-square&logo=visualbasic&logoColor=white)](#)
+[![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-blue?style=flat-square&logo=open-source-initiative&logoColor=white)](#)
+[![MIT License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![.NET 6+](https://img.shields.io/badge/.NET-6%2B-512BD4?style=flat-square&logo=dotnet&logoColor=white)](#)
+[![NuGet NModbus](https://img.shields.io/nuget/v/NModbus4.svg?style=flat-square&logo=nuget&label=NModbus)](https://www.nuget.org/packages/NModbus)
+[![GitHub Release](https://img.shields.io/github/v/release/DeyFerSin/Example-NQ?style=flat-square&display_name=tag&sort=semver)](https://github.com/DeyFerSin/Example-NQ/releases)
 
 Este repositorio contiene **dos ejemplos en Visual Basic .NET** para comunicarse con el **IO‑Link Master NQ‑EP4L** mediante **Modbus/TCP** y un **sensor Keyence LR‑X100C** conectado al puerto 1:
 
@@ -173,11 +177,6 @@ En paralelo, el **display del LR-X** mostró **86.7 mm**.
 - Selección de **puerto IO‑Link** y mapeos por puerto.  
 - Lectura por **EtherNet/IP (CIP)** como alternativa.
 
----
-
-## 📄 Licencia
-
-![MIT License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 Código abierto bajo **MIT**: úsalo, modifícalo y compártelo con atribución.
 

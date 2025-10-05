@@ -1,4 +1,4 @@
-﻿Imports System.Net.Sockets
+Imports System.Net.Sockets
 Imports NModbus
 Imports System.Threading
 
@@ -9,11 +9,15 @@ Module Module1
 
     Private Const START_ADDR As UShort = 0
     Private Const END_ADDR As UShort = 199
-
     Private Const BLOCK_SIZE As UShort = 60
 
     Private Const CHANGE_THRESHOLD_INT As Integer = 1
     Private Const CHANGE_THRESHOLD_FLOAT As Single = 0.01F
+
+    Private Const SCALE_MM As Double = 0.1
+
+    Private Const FLOAT_MM_ABS_MAX As Double = 2000.0
+
     Sub Main()
         Console.WriteLine($"IP: {MASTER_IP}:{MASTER_PORT} | UnitId: {UNIT_ID}")
         Console.WriteLine($"Rango: {START_ADDR}..{END_ADDR} (Holding & Input)")
@@ -53,67 +57,66 @@ Module Module1
             Dim count As UShort = CUInt(Math.Min(BLOCK_SIZE, END_ADDR - addr + 1))
 
             'Primera lectura
-            Dim regs1 As UShort()
-            If isHolding Then
-                regs1 = master.ReadHoldingRegisters(UNIT_ID, addr, count)
-            Else
-                regs1 = master.ReadInputRegisters(UNIT_ID, addr, count)
-            End If
+            Dim regs1 As UShort() =
+                If(isHolding,
+                   master.ReadHoldingRegisters(UNIT_ID, addr, count),
+                   master.ReadInputRegisters(UNIT_ID, addr, count))
 
-            'Pequeña espera y segunda lectura
             Thread.Sleep(300)
 
-            Dim regs2 As UShort()
-            If isHolding Then
-                regs2 = master.ReadHoldingRegisters(UNIT_ID, addr, count)
-            Else
-                regs2 = master.ReadInputRegisters(UNIT_ID, addr, count)
-            End If
+            'Segunda lectura
+            Dim regs2 As UShort() =
+                If(isHolding,
+                   master.ReadHoldingRegisters(UNIT_ID, addr, count),
+                   master.ReadInputRegisters(UNIT_ID, addr, count))
 
-            'Analiza cada dirección del bloque
             For i As Integer = 0 To count - 1
                 Dim a As UShort = CUShort(addr + i)
-                Dim v1 As UShort = regs1(i)
-                Dim v2 As UShort = regs2(i)
 
-                Dim changedInt As Boolean = Math.Abs(CInt(v2) - CInt(v1)) >= CHANGE_THRESHOLD_INT
-                Dim nonZero As Boolean = (v1 <> 0) OrElse (v2 <> 0)
+                Dim u1 As UShort = regs1(i)
+                Dim u2 As UShort = regs2(i)
 
-                'Int16 escalado (0.1 mm)
+                'Se actualiza para valores negativos del sensor
+                Dim s1 As Short = UShortToInt16(u1)
+                Dim s2 As Short = UShortToInt16(u2)
+
+                Dim changedInt As Boolean = Math.Abs(CInt(s2) - CInt(s1)) >= CHANGE_THRESHOLD_INT
+                Dim nonZero As Boolean = (s1 <> 0S) OrElse (s2 <> 0S)
+
+                'INT16 escalado (0.1 mm)
                 If nonZero OrElse changedInt Then
-                    Dim mm1 As Double = CDbl(v1) / 10.0
-                    Dim mm2 As Double = CDbl(v2) / 10.0
+                    Dim mm1 As Double = s1 * SCALE_MM
+                    Dim mm2 As Double = s2 * SCALE_MM
                     If changedInt Then
-                        Console.WriteLine($"{kind} @{a}: INT16  {v1}->{v2}  (~{mm1:0.0}->{mm2:0.0} mm)")
-                    ElseIf nonZero Then
-                        Console.WriteLine($"{kind} @{a}: INT16  {v1}  (~{mm1:0.0} mm)")
+                        Console.WriteLine($"{kind} @{a}: INT16  {s1}->{s2}  ({mm1:+0.0;-0.0;0.0} -> {mm2:+0.0;-0.0;0.0} mm)")
+                    Else
+                        Console.WriteLine($"{kind} @{a}: INT16  {s1}  ({mm1:+0.0;-0.0;0.0} mm)")
                     End If
                 End If
 
-                'FLOAT32 (se usa par a,a+1)
+                'FLOAT32 (par a,a+1)
                 If i < count - 1 Then
-                    Dim hi1 = regs1(i)
-                    Dim lo1 = regs1(i + 1)
-                    Dim hi2 = regs2(i)
-                    Dim lo2 = regs2(i + 1)
+                    Dim hi1 = regs1(i) : Dim lo1 = regs1(i + 1)
+                    Dim hi2 = regs2(i) : Dim lo2 = regs2(i + 1)
 
-                    'Lectura numero 1
                     Dim f1 As Single = ToFloat(hi1, lo1, swapWords:=False)
                     Dim f2 As Single = ToFloat(hi2, lo2, swapWords:=False)
-                    If Math.Abs(f2 - f1) >= CHANGE_THRESHOLD_FLOAT AndAlso IsFinite(f1) AndAlso IsFinite(f2) Then
-                        Console.WriteLine($"{kind} @{a}-{a + 1}: FLOAT32 {f1:0.000}->{f2:0.000}")
-                    ElseIf (IsFinite(f1) AndAlso Math.Abs(f1) > 0.0001F) Then
-                        ' Muestra valores no-cero que podrían ser PV
-                        Console.WriteLine($"{kind} @{a}-{a + 1}: FLOAT32 {f1:0.000}")
+                    If IsFinite(f1) AndAlso IsFinite(f2) Then
+                        If Math.Abs(f2 - f1) >= CHANGE_THRESHOLD_FLOAT AndAlso InFloatRangeMm(f1) AndAlso InFloatRangeMm(f2) Then
+                            Console.WriteLine($"{kind} @{a}-{a + 1}: FLOAT32 {f1:0.000}->{f2:0.000}")
+                        ElseIf InFloatRangeMm(f1) AndAlso Math.Abs(f1) > 0.0001F Then
+                            Console.WriteLine($"{kind} @{a}-{a + 1}: FLOAT32 {f1:0.000}")
+                        End If
                     End If
 
-                    'Lectura numero 2
                     Dim f1s As Single = ToFloat(hi1, lo1, swapWords:=True)
                     Dim f2s As Single = ToFloat(hi2, lo2, swapWords:=True)
-                    If Math.Abs(f2s - f1s) >= CHANGE_THRESHOLD_FLOAT AndAlso IsFinite(f1s) AndAlso IsFinite(f2s) Then
-                        Console.WriteLine($"{kind} @{a}-{a + 1}: FLOAT32(sw) {f1s:0.000}->{f2s:0.000}")
-                    ElseIf (IsFinite(f1s) AndAlso Math.Abs(f1s) > 0.0001F) Then
-                        Console.WriteLine($"{kind} @{a}-{a + 1}: FLOAT32(sw) {f1s:0.000}")
+                    If IsFinite(f1s) AndAlso IsFinite(f2s) Then
+                        If Math.Abs(f2s - f1s) >= CHANGE_THRESHOLD_FLOAT AndAlso InFloatRangeMm(f1s) AndAlso InFloatRangeMm(f2s) Then
+                            Console.WriteLine($"{kind} @{a}-{a + 1}: FLOAT32(sw) {f1s:0.000}->{f2s:0.000}")
+                        ElseIf InFloatRangeMm(f1s) AndAlso Math.Abs(f1s) > 0.0001F Then
+                            Console.WriteLine($"{kind} @{a}-{a + 1}: FLOAT32(sw) {f1s:0.000}")
+                        End If
                     End If
                 End If
             Next
@@ -121,13 +124,14 @@ Module Module1
             addr = CUShort(addr + count)
         End While
     End Sub
+    'Se agrega este nuevo bloque (Para la lectura correctamente)
+    Private Function UShortToInt16(u As UShort) As Short
+        Return BitConverter.ToInt16(BitConverter.GetBytes(u), 0)
+    End Function
 
     Private Function ToFloat(hi As UShort, lo As UShort, swapWords As Boolean) As Single
-        Dim h = hi
-        Dim l = lo
-        If swapWords Then
-            Dim t = h : h = l : l = t
-        End If
+        Dim h = hi, l = lo
+        If swapWords Then Dim t = h : h = l : l = t
         Dim bytes() As Byte = {
             CByte(l And &HFF),
             CByte((l >> 8) And &HFF),
@@ -141,4 +145,7 @@ Module Module1
         Return Not Single.IsNaN(x) AndAlso Not Single.IsInfinity(x)
     End Function
 
+    Private Function InFloatRangeMm(f As Single) As Boolean
+        Return Math.Abs(f) <= FLOAT_MM_ABS_MAX
+    End Function
 End Module

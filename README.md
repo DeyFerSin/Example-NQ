@@ -162,6 +162,48 @@ En paralelo, el **display del LR-X** mostró **86.7 mm**.
 - El **reader simple** del proyecto puede fijarse en esa dirección para obtener el *Current Value* en mm de forma fiable.
 
 ---
+
+## 🆕 Actualización — Example NQ v1.0.1
+
+**Resumen:** soporte de **INT16 con signo** y corrección de **overflow** en *Scanner* y *Reader* para lecturas negativas.
+
+### ✨ Qué cambió
+- Los registros Modbus de 16 bits ahora se **reinterpretan como `Int16`** (complemento a dos) en lugar de `UShort`.
+- Nueva función utilitaria **`UShortToInt16`** para reinterpretar bits y evitar `OverflowException`.
+- Conversión a milímetros con **signo**: `mm = raw * 0.1` (`raw As Short`).
+- La detección de cambios en el *scanner* se hace usando **valores con signo** (negativos/positivos).
+- Se añadió un **filtro de plausibilidad** para lecturas `FLOAT32` fuera de rango (ruido).
+
+### ✅ Resultado esperado (ejemplo)
+```text
+Escaneando HOLDING REGISTERS...
+Holding @2: INT16  -175  (-17.5 mm)
+Holding @2: INT16  -174->-173  (-17.4 -> -17.3 mm)
+Holding @2: INT16   52   (+5.2 mm)
+
+Escaneando INPUT REGISTERS...
+Input  @2: INT16  -180  (-18.0 mm)
+Input  @2: INT16   867  (+86.7 mm)
+```
+
+### 🔎 Por qué
+Al alejar el objetivo, el sensor puede entregar **valores negativos**; el *cast* anterior provocaba **desbordamientos** y lecturas incorrectas. Reinterpretar como `Int16` preserva el signo y hace la lectura **consistente**.
+
+### 🔄 Impacto y compatibilidad
+- *Scanner*: ya no se cae por overflow y reporta mm con signo.
+- *Reader*: muestra el valor real en mm, sea negativo o positivo.
+- **Retrocompatible** con mapeos previos (mejora de robustez).
+
+### Caso 1 — Positivo (funcionamiento normal)
+![Positivo](https://github.com/user-attachments/assets/0229e22f-a84e-462f-b83d-281ee459f40e)  
+*El PV positivo se muestra como antes: conversión directa `mm = raw * 0.1` y coincidencia con el display del sensor.*
+
+### Caso 2 — Negativo (motivo de la actualización)
+![Negativo](https://github.com/user-attachments/assets/245c7027-bf65-4b42-85f2-fbd1b8d38ad9)  
+*El PV negativo ahora se interpreta correctamente como `Int16` con signo. Se elimina el **Overflow** y la lectura aparece en milímetros con signo (p. ej., `-19.4 mm`).*
+
+---
+
 ## 🔐 Notas y consejos
 
 - Verifica que el NQ‑EP4L tenga **Modbus/TCP habilitado** y el firewall permita el puerto **502**.

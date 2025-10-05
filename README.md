@@ -100,7 +100,7 @@ El **scanner** recorre **varios Holding e Input Registers** para **detectar cand
    - `Holding @2: INT16 869 (~86.9 mm)`  
    - `Input @68-69: FLOAT32 59.700`
 
-> En tu captura, el valor útil aparece como: **`Holding @2: INT16 869 (~86.9 mm)`**, lo que confirma que el PV está en **Holding 2** con escala 0.1 mm.
+> El valor útil aparece como: **`Holding @2: INT16 869 (~86.9 mm)`**, lo que confirma que el PV está en **Holding 2** con escala 0.1 mm.
 
 ### Código del scanner (resumen)
 
